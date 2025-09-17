@@ -61,7 +61,7 @@ pub struct PostEventQuery {
     pub session_id: String,
 }
 
-async fn post_event_handler(
+pub async fn post_event_handler(
     State(app): State<App>,
     Query(PostEventQuery { session_id }): Query<PostEventQuery>,
     parts: Parts,
@@ -82,7 +82,7 @@ async fn post_event_handler(
     Ok(StatusCode::ACCEPTED)
 }
 
-async fn sse_handler(
+pub async fn sse_handler(
     State(app): State<App>,
     nested_path: Option<Extension<NestedPath>>,
     parts: Parts,
