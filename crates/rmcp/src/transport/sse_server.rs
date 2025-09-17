@@ -225,7 +225,7 @@ pub struct SseServerConfig {
 
 #[derive(Debug)]
 pub struct SseServer {
-    transport_rx: tokio::sync::mpsc::UnboundedReceiver<SseServerTransport>,
+    pub transport_rx: tokio::sync::mpsc::UnboundedReceiver<SseServerTransport>,
     pub config: SseServerConfig,
 }
 
