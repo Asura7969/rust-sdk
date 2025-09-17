@@ -27,7 +27,7 @@ type TxStore =
 pub type TransportReceiver = ReceiverStream<RxJsonRpcMessage<RoleServer>>;
 
 #[derive(Clone)]
-struct App {
+pub struct App {
     txs: TxStore,
     transport_tx: tokio::sync::mpsc::UnboundedSender<SseServerTransport>,
     post_path: Arc<str>,
