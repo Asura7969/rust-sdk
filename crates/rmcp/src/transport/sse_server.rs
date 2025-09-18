@@ -301,6 +301,29 @@ impl SseServer {
         ct
     }
 
+    pub fn with_v2_service<S>(mut self, service_provider: S) -> CancellationToken
+    where
+        S: Service<RoleServer> + Clone + Send + 'static,
+    {
+        use crate::service::ServiceExt;
+        let ct = self.config.ct.clone();
+        tokio::spawn(async move {
+            while let Some(transport) = self.next_transport().await {
+                let service = service_provider.clone();
+                let ct = self.config.ct.child_token();
+                tokio::spawn(async move {
+                    let server = service
+                        .serve_with_ct(transport, ct)
+                        .await
+                        .map_err(std::io::Error::other)?;
+                    server.waiting().await?;
+                    tokio::io::Result::Ok(())
+                });
+            }
+        });
+        ct
+    }
+
     /// This allows you to skip the initialization steps for incoming request.
     pub fn with_service_directly<S, F>(mut self, service_provider: F) -> CancellationToken
     where
