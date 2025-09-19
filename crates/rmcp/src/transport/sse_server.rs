@@ -86,7 +86,6 @@ pub async fn post_event_handler(
 pub async fn sse_handler(
     State(app): State<App>,
     nested_path: Option<Extension<NestedPath>>,
-    Path(id): Path<Uuid>,
     parts: Parts,
 ) -> Result<Sse<impl Stream<Item = Result<Event, io::Error>>>, Response<String>> {
     let session = session_id();
@@ -121,12 +120,10 @@ pub async fn sse_handler(
     let nested_path = nested_path.as_deref().map(NestedPath::as_str).unwrap_or("");
     let post_path = app.post_path.as_ref();
     let ping_interval = app.sse_ping_interval;
-    let endpoint_path = format!("{nested_path}/{id}/{post_path}?sessionId={session}");
-    tracing::info!("endpoint path: {}", endpoint_path);
     let stream = futures::stream::once(futures::future::ok(
         Event::default()
             .event("endpoint")
-            .data(endpoint_path),
+            .data(format!("{nested_path}{post_path}?sessionId={session}&endpointId=111")),
     ))
     .chain(ReceiverStream::new(to_client_rx).map(|message| {
         match serde_json::to_string(&message) {
