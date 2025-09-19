@@ -121,10 +121,12 @@ pub async fn sse_handler(
     let nested_path = nested_path.as_deref().map(NestedPath::as_str).unwrap_or("");
     let post_path = app.post_path.as_ref();
     let ping_interval = app.sse_ping_interval;
+    let endpoint_path = format!("{nested_path}/{id}/{post_path}?sessionId={session}");
+    tracing::info!("endpoint path: {}", endpoint_path);
     let stream = futures::stream::once(futures::future::ok(
         Event::default()
             .event("endpoint")
-            .data(format!("{nested_path}/{id}/{post_path}?sessionId={session}")),
+            .data(endpoint_path),
     ))
     .chain(ReceiverStream::new(to_client_rx).map(|message| {
         match serde_json::to_string(&message) {
