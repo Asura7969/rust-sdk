@@ -122,7 +122,7 @@ pub async fn sse_handler(
     let stream = futures::stream::once(futures::future::ok(
         Event::default()
             .event("endpoint")
-            .data(format!("{nested_path}{post_path}?sessionId={session}")),
+            .data(format!("{nested_path}/{post_path}?sessionId={session}")),
     ))
     .chain(ReceiverStream::new(to_client_rx).map(|message| {
         match serde_json::to_string(&message) {
