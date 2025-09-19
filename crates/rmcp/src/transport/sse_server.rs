@@ -85,6 +85,7 @@ pub async fn post_event_handler(
 
 pub async fn sse_handler(
     State(app): State<App>,
+    Path(endpoint_id): Path<Uuid>,
     nested_path: Option<Extension<NestedPath>>,
     parts: Parts,
 ) -> Result<Sse<impl Stream<Item = Result<Event, io::Error>>>, Response<String>> {
@@ -123,7 +124,7 @@ pub async fn sse_handler(
     let stream = futures::stream::once(futures::future::ok(
         Event::default()
             .event("endpoint")
-            .data(format!("{nested_path}{post_path}?sessionId={session}&endpointId=111")),
+            .data(format!("{nested_path}{post_path}?sessionId={session}&endpointId={endpoint_id}")),
     ))
     .chain(ReceiverStream::new(to_client_rx).map(|message| {
         match serde_json::to_string(&message) {
