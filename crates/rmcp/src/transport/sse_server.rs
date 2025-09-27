@@ -27,12 +27,21 @@ type TxStore =
     Arc<tokio::sync::RwLock<HashMap<SessionId, tokio::sync::mpsc::Sender<ClientJsonRpcMessage>>>>;
 pub type TransportReceiver = ReceiverStream<RxJsonRpcMessage<RoleServer>>;
 
+pub type EndpointId = String;
+
+#[derive(Clone)]
+pub enum ConnectionMsg {
+    Connect(EndpointId, SessionId),
+    Disconnect(EndpointId, SessionId),
+}
+
 #[derive(Clone)]
 pub struct App {
     txs: TxStore,
     transport_tx: tokio::sync::mpsc::UnboundedSender<SseServerTransport>,
     post_path: Arc<str>,
     sse_ping_interval: Duration,
+    connect_tx: Option<tokio::sync::mpsc::UnboundedSender<ConnectionMsg>>,
 }
 
 impl App {
@@ -50,6 +59,28 @@ impl App {
                 transport_tx,
                 post_path: post_path.into(),
                 sse_ping_interval,
+                connect_tx: None,
+            },
+            transport_rx,
+        )
+    }
+
+    pub fn new_v2(
+        post_path: String,
+        sse_ping_interval: Duration,
+        connect_tx: Option<tokio::sync::mpsc::UnboundedSender<ConnectionMsg>>,
+    ) -> (
+        Self,
+        tokio::sync::mpsc::UnboundedReceiver<SseServerTransport>,
+    ) {
+        let (transport_tx, transport_rx) = tokio::sync::mpsc::unbounded_channel();
+        (
+            Self {
+                txs: Default::default(),
+                transport_tx,
+                post_path: post_path.into(),
+                sse_ping_interval,
+                connect_tx,
             },
             transport_rx,
         )
@@ -96,7 +127,13 @@ pub async fn sse_handler(
     let (from_client_tx, from_client_rx) = tokio::sync::mpsc::channel(64);
     let (to_client_tx, to_client_rx) = tokio::sync::mpsc::channel(64);
     let to_client_tx_clone = to_client_tx.clone();
-
+    let connect_tx_clone = app.connect_tx.clone();
+    match connect_tx_clone.clone() {
+        Some(c) => {
+            c.send(ConnectionMsg::Connect(endpoint_id.to_string(), session.clone())).unwrap()
+        }
+        None => {}
+    }
     app.txs
         .write()
         .await
@@ -136,7 +173,12 @@ pub async fn sse_handler(
     tokio::spawn(async move {
         // Wait for connection closure
         to_client_tx_clone.closed().await;
-
+        match connect_tx_clone {
+            Some(connect_tx) => {
+                connect_tx.send(ConnectionMsg::Disconnect(endpoint_id.to_string(), session.clone())).unwrap();
+            }
+            None => {}
+        }
         // Clean up session
         let session_id = session.clone();
         let tx_store = app.txs.clone();
