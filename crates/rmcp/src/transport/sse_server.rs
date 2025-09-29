@@ -30,9 +30,15 @@ pub type TransportReceiver = ReceiverStream<RxJsonRpcMessage<RoleServer>>;
 pub type EndpointId = String;
 
 #[derive(Clone)]
+pub enum McpType {
+    SSE,
+    STREAMABLE
+}
+
+#[derive(Clone)]
 pub enum ConnectionMsg {
-    Connect(EndpointId, SessionId),
-    Disconnect(EndpointId, SessionId),
+    Connect(EndpointId, SessionId, McpType),
+    Disconnect(EndpointId, SessionId, McpType),
 }
 
 #[derive(Clone)]
@@ -130,7 +136,7 @@ pub async fn sse_handler(
     let connect_tx_clone = app.connect_tx.clone();
     match connect_tx_clone.clone() {
         Some(c) => {
-            c.send(ConnectionMsg::Connect(endpoint_id.to_string(), session.clone())).unwrap()
+            c.send(ConnectionMsg::Connect(endpoint_id.to_string(), session.clone(), McpType::SSE)).unwrap()
         }
         None => {}
     }
@@ -175,7 +181,7 @@ pub async fn sse_handler(
         to_client_tx_clone.closed().await;
         match connect_tx_clone {
             Some(connect_tx) => {
-                connect_tx.send(ConnectionMsg::Disconnect(endpoint_id.to_string(), session.clone())).unwrap();
+                connect_tx.send(ConnectionMsg::Disconnect(endpoint_id.to_string(), session.clone(), McpType::SSE)).unwrap();
             }
             None => {}
         }
